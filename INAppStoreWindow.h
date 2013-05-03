@@ -25,6 +25,12 @@
 #define INAppStoreWindowRetain nonatomic, retain
 #endif
 
+typedef NS_ENUM(NSUInteger, INAppStoreWindowTrafficLightFadeType)
+{
+    INAppStoreWindowTrafficLightFadeTypeOut = 0,
+    INAppStoreWindowTrafficLightFadeTypeIn,
+};
+
 @class INWindowButton;
 
 /** @class INTitlebarView
@@ -39,6 +45,10 @@
  enlarged title bar. This does not handle creating the toolbar.
  */
 @interface INAppStoreWindow : NSWindow
+{
+    INAppStoreWindowTrafficLightFadeType currentFadeType;
+    NSArray *btns;
+}
 
 /** 
  The height of the title bar. By default, this is set to the standard title bar height. 
@@ -134,4 +144,7 @@
 typedef void (^INAppStoreWindowTitleBarDrawingBlock)(BOOL drawsAsMainWindow, 
                                                      CGRect drawingRect, CGPathRef clippingPath);
 @property (INAppStoreWindowCopy) INAppStoreWindowTitleBarDrawingBlock titleBarDrawingBlock;
+
+- (void)fadeTrafficLightsWithEffect:(INAppStoreWindowTrafficLightFadeType)effect;
+
 @end
