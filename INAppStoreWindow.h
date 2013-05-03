@@ -18,6 +18,12 @@
 #import <Cocoa/Cocoa.h>
 #import "INWindowButton.h"
 
+typedef NS_ENUM(NSUInteger, INAppStoreWindowTrafficLightFadeType)
+{
+    INAppStoreWindowTrafficLightFadeTypeOut = 0,
+    INAppStoreWindowTrafficLightFadeTypeIn,
+};
+
 #if __has_feature(objc_arc)
 #define INAppStoreWindowCopy nonatomic, strong
 #define INAppStoreWindowRetain nonatomic, strong
@@ -25,12 +31,6 @@
 #define INAppStoreWindowCopy nonatomic, copy
 #define INAppStoreWindowRetain nonatomic, retain
 #endif
-
-typedef NS_ENUM(NSUInteger, INAppStoreWindowTrafficLightFadeType)
-{
-    INAppStoreWindowTrafficLightFadeTypeOut = 0,
-    INAppStoreWindowTrafficLightFadeTypeIn,
-};
 
 @class INWindowButton;
 
