@@ -366,29 +366,6 @@ NS_INLINE CGGradientRef INCreateGradientWithColors(NSColor *startingColor, NSCol
 @end
 
 @implementation INTitlebarContainer
-- (void)mouseDragged:(NSEvent *)theEvent
-{
-    NSWindow *window = [self window];
-    NSPoint where =  [window convertBaseToScreen:[theEvent locationInWindow]];
-    
-    if ([window isMovableByWindowBackground]) {
-        [super mouseDragged: theEvent];
-        return;
-    }
-    NSUInteger masks = [window styleMask];
-    if (!(masks & NSFullScreenWindowMask)) {
-    NSPoint origin = [window frame].origin;
-    while ((theEvent = [NSApp nextEventMatchingMask:NSLeftMouseDownMask | NSLeftMouseDraggedMask | NSLeftMouseUpMask untilDate:[NSDate distantFuture] inMode:NSEventTrackingRunLoopMode dequeue:YES]) && ([theEvent type] != NSLeftMouseUp)) {
-        @autoreleasepool {
-            NSPoint now = [window convertBaseToScreen:[theEvent locationInWindow]];
-            origin.x += now.x - where.x;
-            origin.y += now.y - where.y;
-            [window setFrameOrigin:origin];
-            where = now;
-        }
-    }
-    }
-}
 @end
 
 @implementation INAppStoreWindow{
@@ -789,7 +766,7 @@ NS_INLINE CGGradientRef INCreateGradientWithColors(NSColor *startingColor, NSCol
     NSButton *close = [self _closeButtonToLayout];
     NSButton *minimize = [self _minimizeButtonToLayout];
     NSButton *zoom = [self _zoomButtonToLayout];
-    
+
     // Set the frame of the window buttons
     NSRect closeFrame = [close frame];
     NSRect minimizeFrame = [minimize frame];
@@ -848,6 +825,96 @@ NS_INLINE CGGradientRef INCreateGradientWithColors(NSColor *startingColor, NSCol
     [self _repositionContentView];
 }
 
+- (void)fadeTrafficLightsWithEffect:(INAppStoreWindowTrafficLightFadeType)effect
+{
+    currentFadeType = effect;
+    
+    self.titleBarView.layer.zPosition = 1000;
+    NSButton *close = [self _closeButtonToLayout];
+    NSButton *minimize = [self _minimizeButtonToLayout];
+    NSButton *zoom = [self _zoomButtonToLayout];
+
+    btns = @[zoom, minimize, close];;
+
+    if (effect == INAppStoreWindowTrafficLightFadeTypeIn)
+    {
+        btns = @[close, minimize, zoom];
+    }
+
+    CFTimeInterval animationTime = CACurrentMediaTime();
+
+    [CATransaction flush];
+    [CATransaction begin];
+
+    CABasicAnimation *fadeAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    fadeAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    fadeAnimation.additive = NO;
+    fadeAnimation.removedOnCompletion = NO;
+    fadeAnimation.fillMode = kCAFillModeBoth;
+    fadeAnimation.delegate = self;
+    
+    for (NSUInteger btnCount = 0; btnCount < btns.count; btnCount++)
+    {
+        switch (effect) {
+            case INAppStoreWindowTrafficLightFadeTypeIn:
+            {
+                for (NSButton *btn in btns)
+                {
+                    [[btn cell] setEnabled:YES];
+                }
+                
+                fadeAnimation.duration = 0.3f;
+                fadeAnimation.beginTime = animationTime + (btnCount != 0 ? (btnCount == 2 ? 0.2 : 0.15) : 0.12);
+                fadeAnimation.fromValue = @(0.f);
+                fadeAnimation.toValue = @(1.f);
+                
+                NSButton *btn = btns[btnCount];
+                btn.layer.zPosition = 100;
+                [btn.layer addAnimation:fadeAnimation forKey:@"opacity"];
+                break;
+            }
+            case INAppStoreWindowTrafficLightFadeTypeOut:
+            {
+                fadeAnimation.duration = 0.1f;
+                fadeAnimation.beginTime = animationTime + (btnCount != 0 ? (btnCount == 2 ? 0.17 : 0.11) : 0.05);
+                fadeAnimation.fromValue = @(1.f);
+                fadeAnimation.toValue = @(0.f);
+
+                NSButton *btn = btns[btnCount];
+                btn.layer.zPosition = 100;
+                [btn.layer addAnimation:fadeAnimation forKey:@"opacity"];
+                break;
+            }
+        }
+    }
+
+    [CATransaction commit];
+}
+
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag
+{
+    if (!flag) return;
+    
+    switch (currentFadeType)
+    {
+        case INAppStoreWindowTrafficLightFadeTypeOut:
+        {
+            double delayInSeconds = 0.12;
+            dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
+            dispatch_after(popTime, dispatch_get_main_queue(), ^(void){
+                for (NSButton *btn in btns)
+                {
+                    [[btn cell] setEnabled:NO];
+                }
+
+            });
+            break;
+        }
+        case INAppStoreWindowTrafficLightFadeTypeIn:
+            break;
+    }
+}
+
 - (void)undoManagerDidCloseUndoGroupNotification:(NSNotification *)notification {
     [self _displayWindowAndTitlebar];
 }
@@ -882,7 +949,10 @@ NS_INLINE CGGradientRef INCreateGradientWithColors(NSColor *startingColor, NSCol
 }
 
 - (NSView *)themeFrameView {
-    return [[self contentView] superview];
+    NSView *themeFrameView = [[self contentView] superview];
+    themeFrameView.wantsLayer = YES;
+    themeFrameView.layer.zPosition = 2;
+    return themeFrameView;
 }
 
 - (void)_createTitlebarView
